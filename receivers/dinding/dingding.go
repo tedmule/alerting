@@ -2,9 +2,14 @@ package dinding
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/prometheus/alertmanager/types"
 
@@ -56,6 +61,9 @@ func (dd *Notifier) Notify(ctx context.Context, as ...*types.Alert) (bool, error
 	}
 
 	u := tmpl(dd.settings.URL)
+	if len(dd.settings.Secret) > 0 {
+		u = buildSignatureURL(dd.settings.URL, dd.settings.Secret)
+	}
 	if tmplErr != nil {
 		dd.log.Warn("failed to template DingDing URL", "error", tmplErr.Error(), "fallback", dd.settings.URL)
 		u = dd.settings.URL
@@ -112,4 +120,25 @@ func buildBody(url string, msgType string, title string, msg string) (string, er
 		return "", err
 	}
 	return string(body), nil
+}
+
+func buildSignatureURL(settingsURL string, secret string) string {
+	fmt.Println("secrettttttttttt")
+	// Get current timestamp(millisecond) as string
+	timestamp := strconv.FormatInt(time.Now().UnixNano()/int64(time.Millisecond), 10)
+
+	// Calculate HMAC-SHA256 signature using secret and timestamp
+	secretBytes := []byte(secret)
+	signatureBytes := []byte(fmt.Sprintf("%s\n%s", timestamp, secret))
+	h := hmac.New(sha256.New, secretBytes)
+	h.Write(signatureBytes)
+	hmacSignature := h.Sum(nil)
+
+	// Base64 encode
+	sign := base64.StdEncoding.EncodeToString(hmacSignature)
+	// URL quote
+	signature := url.QueryEscape(sign)
+
+	// URL format: https://oapi.dingtalk.com/robot/send?access_token=XXXXXX&timestamp=XXX&sign=XXX
+	return fmt.Sprintf("%s&timestamp=%s&sign=%s", settingsURL, timestamp, signature)
 }

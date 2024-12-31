@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	URL         string `json:"url,omitempty" yaml:"url,omitempty"`
+	Secret      string `json:"secret,omitempty" yaml:"secret,omitempty"`
 	MessageType string `json:"msgType,omitempty" yaml:"msgType,omitempty"`
 	Title       string `json:"title,omitempty" yaml:"title,omitempty"`
 	Message     string `json:"message,omitempty" yaml:"message,omitempty"`
